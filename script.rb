@@ -20,12 +20,17 @@ BETS			= '//*[@id="frmContestSelection"]/div/div[2]/div[3]/div/div/div[8]/ul[5]/
 
 
 class RaffleInfo
-	attr_accessor :date, :key, :prizes
+	attr_accessor :date, :numbers, :stars, :prizes, :revenue, :tickets, :combinations, :bets
 
-	def initialize(date, key, prizes)
+	def initialize(date, numbers, stars, prizes, revenue, tickets, combinations, bets)
 		@date   = date
-		@key    = key
+		@numbers = numbers,
+		@stars = stars
 		@prizes = prizes
+		@revenue = revenue
+		@tickets = tickets
+		@combinations = combinations
+		@bets = bets
 	end
 
 	def to_json
@@ -43,7 +48,7 @@ end
 
 def getAmountForPrize(page, index)
 	path = "//*[@id=\"frmContestSelection\"]/div/div[2]/div[3]/div/div/div[5]/ul[#{index}]/li[5]"	
-	page.xpath(path).to_s.sub(/&#8364;/, '').sub(/<li>/, '').sub(/<\/li>/, "").sub(/\?/, "").strip
+	(page.xpath(path).to_s.sub(/&#8364;/, '').sub(/<li>/, '').sub(/<\/li>/, "").sub(/\?/, "").strip.gsub('.','').gsub(',','.').to_f * 100).to_i
 end
 
 def getRaffle(raffle)
@@ -51,19 +56,26 @@ def getRaffle(raffle)
 	page = Nokogiri::HTML(response.body)
 	key 	= page.xpath(KEY).to_s.strip.sub(/<li>/, '').sub(/<\/li>/, "")
 	date 	= page.xpath(DATE).to_s.strip.sub(/<span class="dataInfo">/, '').sub(/<\/span>/, "")
-
+	numbers = key.split('+')[0].split.map{|x| x.to_i}
+	stars   = key.split('+')[1].split.map{|x| x.to_i}
 	prizes = []
 	13.times do |t| 
 		prizes << getAmountForPrize(page, t+1)
 	end
-	RaffleInfo.new(date, key, prizes)
+	revenue = page.xpath(REVENUE).to_s.gsub(/\s+/, "").sub(/<li>/, '').sub(/<\/li>/, "").sub(/&#8364;/, '').sub(/,00/, '').gsub('.', '').to_i
+	tickets = page.xpath(TICKETS).to_s.sub(/<li>/, '').sub(/<\/li>/, "").sub(/&#8364;/, '').gsub(/\s+/, "").sub(/,00/, '').gsub('.', '').to_i
+	combinations = page.xpath(COMBINATIONS).to_s.gsub(/\s+/, "").sub(/<li>/, '').sub(/<\/li>/, "").gsub('.', '').to_i
+	bets = page.xpath(BETS).to_s.gsub(/\s+/, "").sub(/<li>/, '').sub(/<\/li>/, "").gsub('.', '').to_i
+	RaffleInfo.new(date, numbers, stars, prizes, revenue, tickets, combinations, bets)
 end
 
 
-last = 7504
+last = 7646
 all_raffles = []
-(FIRST_AVAILABLE..last).each do |raffle|
-	all_raffles << getRaffle(raffle)
+last.downto(FIRST_AVAILABLE).each do |raffle|
+	r = getRaffle(raffle)
+	p r
+	all_raffles << r
 end
 p all_raffles
 
